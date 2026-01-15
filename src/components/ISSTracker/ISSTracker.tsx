@@ -1,0 +1,300 @@
+import { useState, useCallback, useRef, useEffect, Suspense, lazy, Component, ReactNode } from 'react';
+import { Map as LeafletMap } from 'leaflet';
+import { motion } from 'framer-motion';
+import { MapComponent } from './MapContainer';
+import { InfoPanel } from './InfoPanel';
+import { ControlPanel } from './ControlPanel';
+
+import { AstronautPanel } from './AstronautPanel';
+import { LiveStreamPanel } from './LiveStreamPanel';
+import { PassPredictionPanel } from './PassPredictionPanel';
+import { useISSData } from './hooks/useISSData';
+import { TrackerState } from './types';
+import { Globe2 } from 'lucide-react';
+
+// Lazy load GlobeView to prevent it from breaking the entire app
+const GlobeView = lazy(() => import('./GlobeView'));
+
+function GlobeFallback() {
+  return (
+    <div className="w-full h-full bg-background flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4" />
+        <p className="text-muted-foreground">Loading 3D Globe...</p>
+      </div>
+    </div>
+  );
+}
+
+function GlobeErrorFallback({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="w-full h-full bg-background flex items-center justify-center">
+      <div className="text-center glass-panel p-8 rounded-xl">
+        <Globe2 className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+        <h3 className="text-lg font-semibold text-foreground mb-2">3D Globe Unavailable</h3>
+        <p className="text-muted-foreground text-sm mb-4">The 3D view couldn't load. Try the flat map view.</p>
+        <button
+          onClick={onRetry}
+          className="px-4 py-2 bg-primary/20 border border-primary/50 rounded-lg text-primary text-sm hover:bg-primary/30 transition-colors"
+        >
+          Switch to Flat Map
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export function ISSTracker() {
+  const mapRef = useRef<LeafletMap | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const [state, setState] = useState<TrackerState>({
+    isTracking: true,
+    showOrbit: true,
+    showTerminator: true,
+    showLabels: true,
+    mapStyle: 'satellite',
+    viewMode: 'flat',
+    followISS: true,
+    isFullscreen: false,
+    timeReplayEnabled: false,
+    timeReplayOffset: 0,
+    showLiveStream: false,
+    showPassPredictions: false,
+  });
+
+  const [showAstronautPanel, setShowAstronautPanel] = useState(false);
+  const [globeError, setGlobeError] = useState(false);
+
+  const {
+    position,
+    orbitPath,
+    astronauts,
+    astronautCount,
+    error,
+    lastUpdate,
+    altitude,
+    velocity,
+  } = useISSData(state.isTracking);
+
+  const handleMapReady = useCallback((map: LeafletMap) => {
+    mapRef.current = map;
+  }, []);
+
+  const handleToggleTracking = useCallback(() => {
+    setState(prev => ({ ...prev, isTracking: !prev.isTracking }));
+  }, []);
+
+  const handleToggleOrbit = useCallback(() => {
+    setState(prev => ({ ...prev, showOrbit: !prev.showOrbit }));
+  }, []);
+
+  const handleToggleTerminator = useCallback(() => {
+    setState(prev => ({ ...prev, showTerminator: !prev.showTerminator }));
+  }, []);
+
+  const handleToggleFollow = useCallback(() => {
+    setState(prev => ({ ...prev, followISS: !prev.followISS }));
+  }, []);
+
+  const handleToggleLabels = useCallback(() => {
+    setState(prev => ({ ...prev, showLabels: !prev.showLabels }));
+  }, []);
+
+  const handleToggleFullscreen = useCallback(() => {
+    if (!document.fullscreenElement) {
+      containerRef.current?.requestFullscreen();
+      setState(prev => ({ ...prev, isFullscreen: true }));
+    } else {
+      document.exitFullscreen();
+      setState(prev => ({ ...prev, isFullscreen: false }));
+    }
+  }, []);
+
+  const handleChangeMapStyle = useCallback((style: 'satellite' | 'dark' | 'standard') => {
+    setState(prev => ({ ...prev, mapStyle: style }));
+  }, []);
+
+  const handleChangeViewMode = useCallback((mode: 'flat' | 'globe') => {
+    if (mode === 'globe' && globeError) {
+      // If globe failed before, stay on flat view
+      return;
+    }
+    setState(prev => ({ ...prev, viewMode: mode }));
+  }, [globeError]);
+
+  const handleCenterISS = useCallback(() => {
+    if (mapRef.current && position) {
+      mapRef.current.flyTo([position.latitude, position.longitude], 4, {
+        duration: 1.5,
+        easeLinearity: 0.25,
+      });
+    }
+  }, [position]);
+
+
+
+  const handleToggleLiveStream = useCallback(() => {
+    setState(prev => ({ ...prev, showLiveStream: !prev.showLiveStream }));
+  }, []);
+
+  const handleTogglePassPredictions = useCallback(() => {
+    setState(prev => ({ ...prev, showPassPredictions: !prev.showPassPredictions }));
+  }, []);
+
+  // Listen for fullscreen changes
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setState(prev => ({ ...prev, isFullscreen: !!document.fullscreenElement }));
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  // Handle globe errors
+  const handleGlobeError = useCallback(() => {
+    setGlobeError(true);
+    setState(prev => ({ ...prev, viewMode: 'flat' }));
+  }, []);
+
+  return (
+    <div
+      ref={containerRef}
+      className="relative w-full h-screen overflow-hidden bg-background"
+    >
+      {/* Map/Globe View */}
+      <div className="absolute inset-0">
+        {state.viewMode === 'flat' ? (
+          <MapComponent
+            position={position}
+            orbitPath={orbitPath}
+            state={state}
+            onMapReady={handleMapReady}
+          />
+        ) : (
+          <ErrorBoundary
+            onError={handleGlobeError}
+            fallback={<GlobeErrorFallback onRetry={() => setState(prev => ({ ...prev, viewMode: 'flat' }))} />}
+          >
+            <Suspense fallback={<GlobeFallback />}>
+              <GlobeView
+                position={position}
+                orbitPath={orbitPath}
+                showOrbit={state.showOrbit}
+                showTerminator={state.showTerminator}
+              />
+            </Suspense>
+          </ErrorBoundary>
+        )}
+      </div>
+
+      {/* Background gradient overlay */}
+      <div className="absolute inset-0 bg-gradient-to-b from-background/20 via-transparent to-background/30 pointer-events-none" style={{ zIndex: 500 }} />
+
+      {/* Info Panel */}
+      <motion.div
+        initial={{ x: -100, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        className="absolute top-4 left-4"
+        style={{ zIndex: 1000 }}
+      >
+        <InfoPanel
+          position={position}
+          altitude={altitude}
+          velocity={velocity}
+          astronautCount={astronautCount}
+          astronauts={astronauts}
+          lastUpdate={lastUpdate}
+          onShowAstronauts={() => setShowAstronautPanel(true)}
+        />
+      </motion.div>
+
+      {/* Control Panel */}
+      <div
+        className="absolute bottom-4 left-1/2 -translate-x-1/2"
+        style={{ zIndex: 1000 }}
+      >
+        <ControlPanel
+          state={state}
+          onToggleTracking={handleToggleTracking}
+          onToggleOrbit={handleToggleOrbit}
+          onToggleTerminator={handleToggleTerminator}
+          onToggleFollow={handleToggleFollow}
+          onToggleLabels={handleToggleLabels}
+          onToggleFullscreen={handleToggleFullscreen}
+          onToggleLiveStream={handleToggleLiveStream}
+          onTogglePassPredictions={handleTogglePassPredictions}
+          onChangeMapStyle={handleChangeMapStyle}
+          onChangeViewMode={handleChangeViewMode}
+          onCenterISS={handleCenterISS}
+        />
+      </div>
+
+      {/* Error Toast */}
+      {error && (
+        <motion.div
+          initial={{ y: -50, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          className="absolute top-20 right-4 glass-panel rounded-lg p-4 border-destructive/50"
+          style={{ zIndex: 1000 }}
+        >
+          <p className="text-destructive text-sm">{error}</p>
+        </motion.div>
+      )}
+
+      {/* Astronaut Panel */}
+      <AstronautPanel
+        astronauts={astronauts}
+        isOpen={showAstronautPanel}
+        onClose={() => setShowAstronautPanel(false)}
+      />
+
+      {/* Live Stream Panel */}
+      <LiveStreamPanel
+        isOpen={state.showLiveStream}
+        onClose={() => setState(prev => ({ ...prev, showLiveStream: false }))}
+      />
+
+      {/* Pass Predictions Panel */}
+      <PassPredictionPanel
+        isOpen={state.showPassPredictions}
+        onClose={() => setState(prev => ({ ...prev, showPassPredictions: false }))}
+        issPosition={position}
+      />
+    </div>
+  );
+}
+
+// Simple Error Boundary component
+interface ErrorBoundaryProps {
+  children: ReactNode;
+  fallback: ReactNode;
+  onError?: () => void;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+}
+
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(): ErrorBoundaryState {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error) {
+    console.error('Globe view error:', error);
+    this.props.onError?.();
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback;
+    }
+    return this.props.children;
+  }
+}
