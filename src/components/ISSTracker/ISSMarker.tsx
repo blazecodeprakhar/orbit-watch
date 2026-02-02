@@ -1,61 +1,122 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Marker, Popup, useMap } from 'react-leaflet';
 import L, { LatLngExpression } from 'leaflet';
-import { ISSPosition } from './types';
+import { SatellitePosition } from './types';
 
 interface ISSMarkerProps {
-  position: ISSPosition;
+  position: SatellitePosition;
   followISS: boolean;
+  color?: string;
+  label?: string;
+  isActive?: boolean;
 }
 
-export function ISSMarker({ position, followISS }: ISSMarkerProps) {
+export function ISSMarker({
+  position,
+  followISS,
+  color = '#00d4ff',
+  label = 'SAT',
+  isActive = true
+}: ISSMarkerProps) {
   const map = useMap();
+  const [zoomLevel, setZoomLevel] = useState(map.getZoom());
 
-  const issIcon = useMemo(() => {
+  useEffect(() => {
+    const handleZoom = () => {
+      setZoomLevel(map.getZoom());
+    };
+
+    // Initial set
+    setZoomLevel(map.getZoom());
+
+    map.on('zoomend', handleZoom);
+    return () => {
+      map.off('zoomend', handleZoom);
+    };
+  }, [map]);
+
+  const size = useMemo(() => {
+    const base = isActive ? 45 : 30;
+    // Scale size with zoom level
+    // Zoom 2: factor ~0
+    // Zoom 18: factor ~1.6 (add 80px)
+    // Formula: extra pixels = (zoom - 2) * 5
+    // Z2: 45
+    // Z10: 45 + 40 = 85
+    // Z18: 45 + 80 = 125
+    const growthRate = 5;
+    const zoomFactor = Math.max(0, zoomLevel - 2);
+    const dynamicSize = base + (zoomFactor * growthRate);
+
+    // Cap at reasonable max size
+    return Math.min(dynamicSize, 130);
+  }, [isActive, zoomLevel]);
+
+  const icon = useMemo(() => {
     return L.divIcon({
-      className: 'iss-marker-container',
       html: `
-        <div class="iss-marker" style="
-          width: 48px;
-          height: 48px;
+        <div class="satellite-marker" style="
+          position: relative;
+          width: ${size}px;
+          height: ${size}px;
           display: flex;
           align-items: center;
           justify-content: center;
         ">
-          <svg viewBox="0 0 64 64" width="48" height="48" style="filter: drop-shadow(0 0 8px #00d4ff) drop-shadow(0 0 16px rgba(0, 212, 255, 0.5));">
-            <!-- Main body -->
-            <rect x="24" y="28" width="16" height="8" rx="2" fill="#e0e0e0" stroke="#00d4ff" stroke-width="1"/>
-            <!-- Solar panels left -->
-            <rect x="4" y="26" width="18" height="12" rx="1" fill="#1a365d" stroke="#00d4ff" stroke-width="0.5"/>
-            <line x1="8" y1="26" x2="8" y2="38" stroke="#00d4ff" stroke-width="0.5" opacity="0.5"/>
-            <line x1="13" y1="26" x2="13" y2="38" stroke="#00d4ff" stroke-width="0.5" opacity="0.5"/>
-            <line x1="18" y1="26" x2="18" y2="38" stroke="#00d4ff" stroke-width="0.5" opacity="0.5"/>
-            <!-- Solar panels right -->
-            <rect x="42" y="26" width="18" height="12" rx="1" fill="#1a365d" stroke="#00d4ff" stroke-width="0.5"/>
-            <line x1="46" y1="26" x2="46" y2="38" stroke="#00d4ff" stroke-width="0.5" opacity="0.5"/>
-            <line x1="51" y1="26" x2="51" y2="38" stroke="#00d4ff" stroke-width="0.5" opacity="0.5"/>
-            <line x1="56" y1="26" x2="56" y2="38" stroke="#00d4ff" stroke-width="0.5" opacity="0.5"/>
-            <!-- Connection arms -->
-            <rect x="22" y="30" width="2" height="4" fill="#b0b0b0"/>
-            <rect x="40" y="30" width="2" height="4" fill="#b0b0b0"/>
-            <!-- Modules -->
-            <circle cx="28" cy="32" r="3" fill="#c0c0c0" stroke="#00d4ff" stroke-width="0.5"/>
-            <circle cx="36" cy="32" r="3" fill="#c0c0c0" stroke="#00d4ff" stroke-width="0.5"/>
-            <!-- Radiators top -->
-            <rect x="26" y="20" width="12" height="6" rx="1" fill="#8b7355" stroke="#00d4ff" stroke-width="0.5"/>
-            <!-- Radiators bottom -->
-            <rect x="26" y="38" width="12" height="6" rx="1" fill="#8b7355" stroke="#00d4ff" stroke-width="0.5"/>
-          </svg>
+          <!-- Glow Effect -->
           <div style="
             position: absolute;
-            width: 60px;
-            height: 60px;
-            border: 2px solid rgba(0, 212, 255, 0.4);
+            width: ${size + 12}px;
+            height: ${size + 12}px;
+            background: radial-gradient(circle, ${color}30 0%, transparent 70%);
             border-radius: 50%;
-            animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+            animation: pulse-glow 2s ease-in-out infinite;
+          "></div>
+          
+          <!-- Satellite Image -->
+          <img src="/satellite-real.png" style="
+            width: ${size}px !important;
+            height: ${size}px !important;
+            max-width: ${size}px !important;
+            max-height: ${size}px !important;
+            filter: drop-shadow(0 0 4px ${color}) drop-shadow(0 0 8px ${color}40) brightness(1.1);
+            transform: rotate(-45deg);
+            object-fit: contain;
+            pointer-events: none;
+          " />
+          
+          ${isActive ? `
+            <div style="
+              position: absolute;
+              top: -16px; 
+              left: 50%;
+              transform: translateX(-50%);
+              background: ${color}25;
+              border: 1px solid ${color}60;
+              padding: 2px 8px;
+              border-radius: 6px;
+              font-size: 10px;
+              font-weight: 600;
+              color: ${color};
+              white-space: nowrap;
+              backdrop-filter: blur(4px);
+              font-family: 'Inter', system-ui, sans-serif;
+              pointer-events: none;
+            ">${label}</div>
+          ` : ''}
+          
+          <!-- Ping Rings -->
+          <div style="
+            position: absolute;
+            width: ${size + 20}px;
+            height: ${size + 20}px;
+            border: 2px solid ${color}40;
+            border-radius: 50%;
+            animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
             left: 50%;
             top: 50%;
             transform: translate(-50%, -50%);
+            pointer-events: none;
           "></div>
         </div>
         <style>
@@ -65,35 +126,39 @@ export function ISSMarker({ position, followISS }: ISSMarkerProps) {
               opacity: 0;
             }
           }
+          @keyframes pulse-glow {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
+          }
         </style>
       `,
-      iconSize: [48, 48],
-      iconAnchor: [24, 24],
-      popupAnchor: [0, -24],
+      className: 'satellite-marker-container',
+      iconSize: [size, size],
+      iconAnchor: [size / 2, size / 2],
+      popupAnchor: [0, -size / 2],
     });
-  }, []);
+  }, [color, label, isActive, size]);
 
   useEffect(() => {
-    if (followISS && position) {
+    if (followISS && isActive) {
       map.flyTo([position.latitude, position.longitude], map.getZoom(), {
         duration: 1,
         easeLinearity: 0.25,
       });
     }
-  }, [position, followISS, map]);
-
-  if (!position) return null;
+  }, [followISS, isActive, position.latitude, position.longitude, map]);
 
   const markerPosition: LatLngExpression = [position.latitude, position.longitude];
 
   return (
-    <Marker 
-      position={markerPosition} 
-      icon={issIcon}
+    <Marker
+      position={markerPosition}
+      icon={icon}
+      zIndexOffset={isActive ? 1000 : 0}
     >
       <Popup>
         <div className="text-foreground bg-card p-2 rounded">
-          <h3 className="font-bold text-primary mb-2">International Space Station</h3>
+          <h3 className="font-bold mb-2" style={{ color }}>{label}</h3>
           <p className="text-sm">Lat: {position.latitude.toFixed(4)}°</p>
           <p className="text-sm">Lng: {position.longitude.toFixed(4)}°</p>
         </div>

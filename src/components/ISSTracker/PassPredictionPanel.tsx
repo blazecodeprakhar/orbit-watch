@@ -9,15 +9,25 @@ import {
   EyeOff,
   ChevronRight,
   Loader2,
-  Navigation
+  Navigation,
+  Minimize2,
+  Maximize2
 } from 'lucide-react';
 import { useISSPasses, ISSPass } from './hooks/useISSPasses';
-import { ISSPosition } from './types';
+import { SatellitePosition } from './types';
+
+interface UserLocationWithName {
+  latitude: number;
+  longitude: number;
+  name?: string;
+}
 
 interface PassPredictionPanelProps {
   isOpen: boolean;
   onClose: () => void;
-  issPosition: ISSPosition | null;
+  satellitePosition: SatellitePosition | null;
+  isMinimized: boolean;
+  onToggleMinimize: () => void;
 }
 
 function formatTime(date: Date): string {
@@ -55,53 +65,59 @@ function PassCard({ pass, index }: { pass: ISSPass; index: number }) {
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: index * 0.1 }}
-      className={`p-3 rounded-lg border transition-all ${
+      className={`p-2.5 rounded-lg border transition-all ${
         isVisible 
           ? 'bg-primary/10 border-primary/30 hover:bg-primary/15' 
           : 'bg-secondary/30 border-border/30 opacity-70'
       }`}
     >
-      <div className="flex items-start justify-between mb-2">
+      <div className="flex items-start justify-between mb-1.5">
         <div>
-          <div className="text-xs text-muted-foreground mb-0.5">
+          <div className="text-[10px] text-muted-foreground mb-0.5">
             {formatDate(pass.startTime)}
           </div>
-          <div className="text-sm font-semibold text-foreground">
+          <div className="text-xs font-semibold text-foreground">
             {formatTime(pass.startTime)}
           </div>
         </div>
-        <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+        <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium ${
           pass.brightness === 'visible' 
             ? 'bg-green-500/20 text-green-400'
             : pass.brightness === 'dim'
             ? 'bg-yellow-500/20 text-yellow-400'
             : 'bg-muted text-muted-foreground'
         }`}>
-          {isVisible ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+          {isVisible ? <Eye className="w-2.5 h-2.5" /> : <EyeOff className="w-2.5 h-2.5" />}
           {pass.brightness === 'visible' ? 'Visible' : pass.brightness === 'dim' ? 'Dim' : 'Not visible'}
         </div>
       </div>
       
-      <div className="grid grid-cols-3 gap-2 text-xs">
-        <div className="flex items-center gap-1.5">
-          <Clock className="w-3 h-3 text-muted-foreground" />
+      <div className="grid grid-cols-3 gap-1.5 text-[10px]">
+        <div className="flex items-center gap-1">
+          <Clock className="w-2.5 h-2.5 text-muted-foreground" />
           <span className="text-foreground">{formatDuration(pass.duration)}</span>
         </div>
-        <div className="flex items-center gap-1.5">
-          <Navigation className="w-3 h-3 text-muted-foreground" />
+        <div className="flex items-center gap-1">
+          <Navigation className="w-2.5 h-2.5 text-muted-foreground" />
           <span className="text-foreground">{pass.maxElevation}°</span>
         </div>
-        <div className="flex items-center gap-1.5">
-          <Compass className="w-3 h-3 text-muted-foreground" />
-          <span className="text-foreground">{pass.startDirection} → {pass.endDirection}</span>
+        <div className="flex items-center gap-1">
+          <Compass className="w-2.5 h-2.5 text-muted-foreground" />
+          <span className="text-foreground">{pass.startDirection}</span>
         </div>
       </div>
     </motion.div>
   );
 }
 
-export function PassPredictionPanel({ isOpen, onClose, issPosition }: PassPredictionPanelProps) {
-  const { userLocation, passes, loading, error, getUserLocation } = useISSPasses(issPosition);
+export function PassPredictionPanel({ 
+  isOpen, 
+  onClose, 
+  satellitePosition,
+  isMinimized,
+  onToggleMinimize
+}: PassPredictionPanelProps) {
+  const { userLocation, passes, loading, error, getUserLocation } = useISSPasses(satellitePosition);
   const [hasRequested, setHasRequested] = useState(false);
 
   const handleGetLocation = () => {
@@ -109,105 +125,127 @@ export function PassPredictionPanel({ isOpen, onClose, issPosition }: PassPredic
     getUserLocation();
   };
 
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div
-          initial={{ opacity: 0, x: 100 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: 100 }}
-          transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-          className="fixed top-4 right-4 w-80 max-h-[calc(100vh-8rem)] glass-panel rounded-xl shadow-2xl overflow-hidden"
-          style={{ zIndex: 1000 }}
-        >
-          {/* Header */}
-          <div className="flex items-center justify-between p-3 bg-card/60 border-b border-border/50">
-            <div className="flex items-center gap-2">
-              <div className="p-1.5 rounded-lg bg-primary/20">
-                <Eye className="w-4 h-4 text-primary" />
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold text-foreground">ISS Pass Predictions</h3>
-                {userLocation && (
-                  <p className="text-xs text-muted-foreground flex items-center gap-1">
-                    <MapPin className="w-3 h-3" />
-                    {userLocation.name}
-                  </p>
-                )}
-              </div>
-            </div>
-            <button
-              onClick={onClose}
-              className="p-1.5 rounded-lg hover:bg-destructive/20 transition-colors"
-            >
-              <X className="w-4 h-4 text-muted-foreground" />
-            </button>
-          </div>
+  if (!isOpen) return null;
 
-          {/* Content */}
-          <div className="p-3 overflow-y-auto max-h-[calc(100vh-14rem)]">
-            {!hasRequested ? (
-              <div className="text-center py-6">
-                <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-3">
-                  <MapPin className="w-6 h-6 text-primary" />
-                </div>
-                <h4 className="text-sm font-medium text-foreground mb-2">
-                  See when ISS passes over you
-                </h4>
-                <p className="text-xs text-muted-foreground mb-4">
-                  Get upcoming visible passes with timing, direction, and brightness info
-                </p>
-                <button
-                  onClick={handleGetLocation}
-                  className="flex items-center gap-2 mx-auto px-4 py-2 bg-primary/20 border border-primary/50 rounded-lg text-primary text-sm hover:bg-primary/30 transition-colors"
-                >
-                  <MapPin className="w-4 h-4" />
-                  Use My Location
-                </button>
-              </div>
-            ) : loading ? (
-              <div className="flex flex-col items-center justify-center py-8">
-                <Loader2 className="w-8 h-8 text-primary animate-spin mb-3" />
-                <p className="text-sm text-muted-foreground">Finding your location...</p>
-              </div>
-            ) : error ? (
-              <div className="text-center py-6">
-                <div className="w-12 h-12 rounded-full bg-destructive/20 flex items-center justify-center mx-auto mb-3">
-                  <X className="w-6 h-6 text-destructive" />
-                </div>
-                <p className="text-sm text-destructive mb-4">{error}</p>
-                <button
-                  onClick={handleGetLocation}
-                  className="px-4 py-2 bg-secondary/50 border border-border/50 rounded-lg text-foreground text-sm hover:bg-secondary/70 transition-colors"
-                >
-                  Try Again
-                </button>
-              </div>
-            ) : passes.length === 0 ? (
-              <div className="text-center py-6">
-                <p className="text-sm text-muted-foreground">
-                  No visible passes found for your location in the next 24 hours.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <p className="text-xs text-muted-foreground mb-3">
-                  Upcoming passes (next 24 hours)
-                </p>
-                {passes.map((pass, index) => (
-                  <PassCard key={index} pass={pass} index={index} />
-                ))}
-                <div className="text-xs text-muted-foreground/70 pt-2 border-t border-border/30 mt-3">
-                  <p className="flex items-center gap-1">
-                    <ChevronRight className="w-3 h-3" />
-                    Best viewing at dusk/dawn when ISS is sunlit
-                  </p>
-                </div>
-              </div>
+  if (isMinimized) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, x: 20 }}
+        animate={{ opacity: 1, x: 0 }}
+        className="fixed top-4 right-4 glass-panel rounded-xl p-2 shadow-2xl"
+        style={{ zIndex: 1000 }}
+      >
+        <button
+          onClick={onToggleMinimize}
+          className="flex items-center gap-2 p-2 hover:bg-primary/20 rounded-lg transition-colors"
+          title="Expand Pass Predictions"
+        >
+          <Eye className="w-4 h-4 text-primary" />
+          <span className="text-xs font-medium text-foreground">Passes</span>
+          <Maximize2 className="w-3 h-3 text-muted-foreground" />
+        </button>
+      </motion.div>
+    );
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: 100 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: 100 }}
+      transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+      className="fixed top-4 right-4 w-72 max-h-[60vh] glass-panel rounded-xl shadow-2xl overflow-hidden"
+      style={{ zIndex: 1000 }}
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between p-2.5 bg-card/60 border-b border-border/50">
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 rounded-lg bg-primary/20">
+            <Eye className="w-3.5 h-3.5 text-primary" />
+          </div>
+          <div>
+            <h3 className="text-xs font-semibold text-foreground">Pass Predictions</h3>
+            {userLocation && (
+              <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+                <MapPin className="w-2.5 h-2.5" />
+                {userLocation.name}
+              </p>
             )}
           </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+        </div>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={onToggleMinimize}
+            className="p-1.5 rounded-lg hover:bg-secondary transition-colors"
+            title="Minimize"
+          >
+            <Minimize2 className="w-3.5 h-3.5 text-muted-foreground" />
+          </button>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg hover:bg-destructive/20 transition-colors"
+          >
+            <X className="w-3.5 h-3.5 text-muted-foreground" />
+          </button>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="p-2.5 overflow-y-auto max-h-[calc(60vh-60px)]">
+        {!hasRequested ? (
+          <div className="text-center py-4">
+            <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-2">
+              <MapPin className="w-5 h-5 text-primary" />
+            </div>
+            <h4 className="text-xs font-medium text-foreground mb-1">
+              See when satellites pass over you
+            </h4>
+            <p className="text-[10px] text-muted-foreground mb-3">
+              Get timing, direction, and visibility info
+            </p>
+            <button
+              onClick={handleGetLocation}
+              className="flex items-center gap-1.5 mx-auto px-3 py-1.5 bg-primary/20 border border-primary/50 rounded-lg text-primary text-xs hover:bg-primary/30 transition-colors"
+            >
+              <MapPin className="w-3.5 h-3.5" />
+              Use My Location
+            </button>
+          </div>
+        ) : loading ? (
+          <div className="flex flex-col items-center justify-center py-6">
+            <Loader2 className="w-6 h-6 text-primary animate-spin mb-2" />
+            <p className="text-xs text-muted-foreground">Finding location...</p>
+          </div>
+        ) : error ? (
+          <div className="text-center py-4">
+            <div className="w-10 h-10 rounded-full bg-destructive/20 flex items-center justify-center mx-auto mb-2">
+              <X className="w-5 h-5 text-destructive" />
+            </div>
+            <p className="text-xs text-destructive mb-3">{error}</p>
+            <button
+              onClick={handleGetLocation}
+              className="px-3 py-1.5 bg-secondary/50 border border-border/50 rounded-lg text-foreground text-xs hover:bg-secondary/70 transition-colors"
+            >
+              Try Again
+            </button>
+          </div>
+        ) : passes.length === 0 ? (
+          <div className="text-center py-4">
+            <p className="text-xs text-muted-foreground">
+              No visible passes found in the next 24 hours.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-1.5">
+            <p className="text-[10px] text-muted-foreground mb-2">
+              Upcoming passes (next 24 hours)
+            </p>
+            {passes.map((pass, index) => (
+              <PassCard key={index} pass={pass} index={index} />
+            ))}
+          </div>
+        )}
+      </div>
+    </motion.div>
   );
 }

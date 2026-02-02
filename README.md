@@ -1,60 +1,39 @@
-# ISS Live Tracker
-
-A real-time International Space Station tracker built with modern web technologies.
+# Orbit Watch - ISS Live Tracker
 
 ## Project Info
+Orbit Watch is a real-time International Space Station (ISS) tracker built with modern web technologies.
 
-Track the International Space Station in real-time on a satellite map. View live position, orbit path, crew information, and day/night terminator.
+## Features
+- Real-time ISS position tracking
+- Satellite map visualization
+- Crew information
+- Orbit path visualization
+
+## Tech Stack
+- Vite
+- TypeScript
+- React
+- shadcn-ui
+- Tailwind CSS
 
 ## Getting Started
 
-### Prerequisites
+1. **Clone the repository**
+   ```bash
+   git clone <YOUR_GIT_URL>
+   ```
 
-- Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
 
-### Installation
+3. **Run the development server**
+   ```bash
+   npm run dev
+   ```
 
-Follow these steps to run the project locally:
-
-```sh
-# Step 1: Clone the repository
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory
-cd orbit-watch-main
-
-# Step 3: Install the necessary dependencies
-npm i
-
-# Step 4: Start the development server
-npm run dev
-```
-
-The application will be available at `http://localhost:8080`
-
-## Technologies Used
-
-This project is built with:
-
-- **Vite** - Fast build tool and dev server
-- **TypeScript** - Type-safe JavaScript
-- **React** - UI library
-- **shadcn-ui** - Component library
-- **Tailwind CSS** - Utility-first CSS framework
-- **Leaflet** - Interactive maps
-- **React Three Fiber** - 3D graphics
-
-## Deployment
-
-You can deploy this project to any static hosting service:
-
-- Vercel
-- Netlify
-- GitHub Pages
-- Cloudflare Pages
-
-Build the production bundle with:
-
-```sh
-npm run build
-```
+4. **Build for production**
+   ```bash
+   npm run build
+   ```

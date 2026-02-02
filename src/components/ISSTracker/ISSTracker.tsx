@@ -4,15 +4,14 @@ import { motion } from 'framer-motion';
 import { MapComponent } from './MapContainer';
 import { InfoPanel } from './InfoPanel';
 import { ControlPanel } from './ControlPanel';
-
+import { SatelliteSelector } from './SatelliteSelector';
 import { AstronautPanel } from './AstronautPanel';
-import { LiveStreamPanel } from './LiveStreamPanel';
 import { PassPredictionPanel } from './PassPredictionPanel';
-import { useISSData } from './hooks/useISSData';
-import { TrackerState } from './types';
+import { useSatelliteData } from './hooks/useSatelliteData';
+import { TrackerState, COUNTRY_FLAGS } from './types';
+import { SATELLITE_CATALOG } from '../../config/satellite-config';
 import { Globe2 } from 'lucide-react';
 
-// Lazy load GlobeView to prevent it from breaking the entire app
 const GlobeView = lazy(() => import('./GlobeView'));
 
 function GlobeFallback() {
@@ -48,6 +47,8 @@ export function ISSTracker() {
   const mapRef = useRef<LeafletMap | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  const [activeSatelliteId, setActiveSatelliteId] = useState('iss');
+
   const [state, setState] = useState<TrackerState>({
     isTracking: true,
     showOrbit: true,
@@ -55,27 +56,29 @@ export function ISSTracker() {
     showLabels: true,
     mapStyle: 'satellite',
     viewMode: 'flat',
-    followISS: true,
+    followSatellite: false,
     isFullscreen: false,
-    timeReplayEnabled: false,
-    timeReplayOffset: 0,
-    showLiveStream: false,
     showPassPredictions: false,
+    showAllSatellites: false,
   });
 
   const [showAstronautPanel, setShowAstronautPanel] = useState(false);
   const [globeError, setGlobeError] = useState(false);
 
+  // Panel minimize states
+  const [infoMinimized, setInfoMinimized] = useState(false);
+  const [selectorMinimized, setSelectorMinimized] = useState(false);
+  const [passMinimized, setPassMinimized] = useState(false);
+
   const {
-    position,
+    satellites,
+    activeSatellite,
     orbitPath,
     astronauts,
     astronautCount,
     error,
     lastUpdate,
-    altitude,
-    velocity,
-  } = useISSData(state.isTracking);
+  } = useSatelliteData(activeSatelliteId, state.isTracking, state.showAllSatellites);
 
   const handleMapReady = useCallback((map: LeafletMap) => {
     mapRef.current = map;
@@ -94,7 +97,7 @@ export function ISSTracker() {
   }, []);
 
   const handleToggleFollow = useCallback(() => {
-    setState(prev => ({ ...prev, followISS: !prev.followISS }));
+    setState(prev => ({ ...prev, followSatellite: !prev.followSatellite }));
   }, []);
 
   const handleToggleLabels = useCallback(() => {
@@ -116,33 +119,31 @@ export function ISSTracker() {
   }, []);
 
   const handleChangeViewMode = useCallback((mode: 'flat' | 'globe') => {
-    if (mode === 'globe' && globeError) {
-      // If globe failed before, stay on flat view
-      return;
-    }
+    if (mode === 'globe' && globeError) return;
     setState(prev => ({ ...prev, viewMode: mode }));
   }, [globeError]);
 
-  const handleCenterISS = useCallback(() => {
-    if (mapRef.current && position) {
-      mapRef.current.flyTo([position.latitude, position.longitude], 4, {
+  const handleCenterSatellite = useCallback(() => {
+    if (mapRef.current && activeSatellite?.position) {
+      mapRef.current.flyTo([activeSatellite.position.latitude, activeSatellite.position.longitude], 4, {
         duration: 1.5,
         easeLinearity: 0.25,
       });
     }
-  }, [position]);
-
-
-
-  const handleToggleLiveStream = useCallback(() => {
-    setState(prev => ({ ...prev, showLiveStream: !prev.showLiveStream }));
-  }, []);
+  }, [activeSatellite]);
 
   const handleTogglePassPredictions = useCallback(() => {
     setState(prev => ({ ...prev, showPassPredictions: !prev.showPassPredictions }));
   }, []);
 
-  // Listen for fullscreen changes
+  const handleToggleShowAll = useCallback(() => {
+    setState(prev => ({ ...prev, showAllSatellites: !prev.showAllSatellites }));
+  }, []);
+
+  const handleSelectSatellite = useCallback((id: string) => {
+    setActiveSatelliteId(id);
+  }, []);
+
   useEffect(() => {
     const handleFullscreenChange = () => {
       setState(prev => ({ ...prev, isFullscreen: !!document.fullscreenElement }));
@@ -151,11 +152,12 @@ export function ISSTracker() {
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
 
-  // Handle globe errors
   const handleGlobeError = useCallback(() => {
     setGlobeError(true);
     setState(prev => ({ ...prev, viewMode: 'flat' }));
   }, []);
+
+  const catalogEntry = SATELLITE_CATALOG.find(s => s.id === activeSatelliteId);
 
   return (
     <div
@@ -166,7 +168,8 @@ export function ISSTracker() {
       <div className="absolute inset-0">
         {state.viewMode === 'flat' ? (
           <MapComponent
-            position={position}
+            satellites={satellites}
+            activeSatelliteId={activeSatelliteId}
             orbitPath={orbitPath}
             state={state}
             onMapReady={handleMapReady}
@@ -178,10 +181,12 @@ export function ISSTracker() {
           >
             <Suspense fallback={<GlobeFallback />}>
               <GlobeView
-                position={position}
+                satellites={satellites}
+                activeSatelliteId={activeSatelliteId}
                 orbitPath={orbitPath}
                 showOrbit={state.showOrbit}
                 showTerminator={state.showTerminator}
+                showAllSatellites={state.showAllSatellites}
               />
             </Suspense>
           </ErrorBoundary>
@@ -191,23 +196,44 @@ export function ISSTracker() {
       {/* Background gradient overlay */}
       <div className="absolute inset-0 bg-gradient-to-b from-background/20 via-transparent to-background/30 pointer-events-none" style={{ zIndex: 500 }} />
 
-      {/* Info Panel */}
+      {/* Satellite Selector - Top Left */}
       <motion.div
         initial={{ x: -100, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
         className="absolute top-4 left-4"
         style={{ zIndex: 1000 }}
       >
+        <SatelliteSelector
+          activeSatelliteId={activeSatelliteId}
+          satellites={satellites}
+          showAllSatellites={state.showAllSatellites}
+          onSelectSatellite={handleSelectSatellite}
+          onToggleShowAll={handleToggleShowAll}
+          isMinimized={selectorMinimized}
+          onToggleMinimize={() => setSelectorMinimized(!selectorMinimized)}
+        />
+      </motion.div>
+
+      {/* Info Panel - Below Selector */}
+      <motion.div
+        initial={{ x: -100, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        transition={{ delay: 0.1 }}
+        className={`absolute left-4 ${selectorMinimized ? 'top-20' : 'top-auto bottom-24'}`}
+        style={{ zIndex: 1000 }}
+      >
         <InfoPanel
-          position={position}
-          altitude={altitude}
-          velocity={velocity}
+          satellite={activeSatellite || null}
           astronautCount={astronautCount}
           astronauts={astronauts}
           lastUpdate={lastUpdate}
           onShowAstronauts={() => setShowAstronautPanel(true)}
+          isMinimized={infoMinimized}
+          onToggleMinimize={() => setInfoMinimized(!infoMinimized)}
         />
       </motion.div>
+
+
 
       {/* Control Panel */}
       <div
@@ -222,11 +248,10 @@ export function ISSTracker() {
           onToggleFollow={handleToggleFollow}
           onToggleLabels={handleToggleLabels}
           onToggleFullscreen={handleToggleFullscreen}
-          onToggleLiveStream={handleToggleLiveStream}
           onTogglePassPredictions={handleTogglePassPredictions}
           onChangeMapStyle={handleChangeMapStyle}
           onChangeViewMode={handleChangeViewMode}
-          onCenterISS={handleCenterISS}
+          onCenterSatellite={handleCenterSatellite}
         />
       </div>
 
@@ -249,23 +274,19 @@ export function ISSTracker() {
         onClose={() => setShowAstronautPanel(false)}
       />
 
-      {/* Live Stream Panel */}
-      <LiveStreamPanel
-        isOpen={state.showLiveStream}
-        onClose={() => setState(prev => ({ ...prev, showLiveStream: false }))}
-      />
-
       {/* Pass Predictions Panel */}
       <PassPredictionPanel
         isOpen={state.showPassPredictions}
         onClose={() => setState(prev => ({ ...prev, showPassPredictions: false }))}
-        issPosition={position}
+        satellitePosition={activeSatellite?.position || null}
+        isMinimized={passMinimized}
+        onToggleMinimize={() => setPassMinimized(!passMinimized)}
       />
     </div>
   );
 }
 
-// Simple Error Boundary component
+// Error Boundary component
 interface ErrorBoundaryProps {
   children: ReactNode;
   fallback: ReactNode;

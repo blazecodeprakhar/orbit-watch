@@ -5,11 +5,15 @@ import { OrbitPoint } from './types';
 interface OrbitPathProps {
   orbitPath: OrbitPoint[];
   currentTimestamp: number;
+  color?: string;
 }
 
-export function OrbitPath({ orbitPath, currentTimestamp }: OrbitPathProps) {
+export function OrbitPath({ orbitPath, currentTimestamp, color = '#00d4ff' }: OrbitPathProps) {
   // Split path into segments to handle dateline crossing
   const { pastSegments, futureSegments } = splitOrbitPath(orbitPath, currentTimestamp);
+
+  // Generate a lighter/purple color for future path
+  const futureColor = '#a855f7';
 
   return (
     <>
@@ -19,7 +23,7 @@ export function OrbitPath({ orbitPath, currentTimestamp }: OrbitPathProps) {
           key={`past-${index}`}
           positions={segment}
           pathOptions={{
-            color: '#00d4ff',
+            color: color,
             weight: 2.5,
             opacity: 0.8,
             lineCap: 'round',
@@ -34,7 +38,7 @@ export function OrbitPath({ orbitPath, currentTimestamp }: OrbitPathProps) {
           key={`future-${index}`}
           positions={segment}
           pathOptions={{
-            color: '#a855f7',
+            color: futureColor,
             weight: 2,
             opacity: 0.5,
             dashArray: '10, 5',
