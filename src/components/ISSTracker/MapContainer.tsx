@@ -19,20 +19,18 @@ const MAP_TILES = {
   satellite: {
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
     attribution: 'Tiles &copy; Esri',
+    labelsUrl: 'https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png'
   },
   dark: {
-    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+    url: 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',
     attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+    labelsUrl: 'https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png'
   },
   standard: {
-    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    attribution: '&copy; OpenStreetMap contributors',
+    url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png',
+    attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+    labelsUrl: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png'
   },
-};
-
-const LABELS_LAYER = {
-  url: 'https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png',
-  attribution: '&copy; OpenStreetMap &copy; CARTO',
 };
 
 function MapController({ onMapReady }: { onMapReady: (map: LeafletMap) => void }) {
@@ -76,15 +74,16 @@ export function MapComponent({
 
       {/* Base Tile Layer */}
       <TileLayer
-        key={state.mapStyle}
+        key={`base-${state.mapStyle}`}
         url={tileConfig.url}
       />
 
-      {/* Labels Layer (on top of satellite/dark maps) */}
-      {state.showLabels && (state.mapStyle === 'satellite' || state.mapStyle === 'dark') && (
+      {/* Dynamic Labels Layer */}
+      {state.showLabels && (
         <TileLayer
-          url={LABELS_LAYER.url}
-          pane="overlayPane"
+          key={`labels-${state.mapStyle}`}
+          url={tileConfig.labelsUrl}
+          zIndex={1000}
         />
       )}
 

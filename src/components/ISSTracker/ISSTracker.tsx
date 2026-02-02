@@ -66,7 +66,7 @@ export function ISSTracker() {
   const [globeError, setGlobeError] = useState(false);
 
   // Panel minimize states
-  const [infoMinimized, setInfoMinimized] = useState(false);
+  const [infoMinimized, setInfoMinimized] = useState(true);
   const [selectorMinimized, setSelectorMinimized] = useState(false);
   const [passMinimized, setPassMinimized] = useState(false);
 
@@ -79,6 +79,26 @@ export function ISSTracker() {
     error,
     lastUpdate,
   } = useSatelliteData(activeSatelliteId, state.isTracking, state.showAllSatellites);
+
+  const handleToggleSelector = useCallback(() => {
+    setSelectorMinimized(prev => {
+      const willBeMaximized = !!prev;
+      if (willBeMaximized) {
+        setInfoMinimized(true);
+      }
+      return !prev;
+    });
+  }, []);
+
+  const handleToggleInfo = useCallback(() => {
+    setInfoMinimized(prev => {
+      const willBeMaximized = !!prev;
+      if (willBeMaximized) {
+        setSelectorMinimized(true);
+      }
+      return !prev;
+    });
+  }, []);
 
   const handleMapReady = useCallback((map: LeafletMap) => {
     mapRef.current = map;
@@ -210,7 +230,7 @@ export function ISSTracker() {
           onSelectSatellite={handleSelectSatellite}
           onToggleShowAll={handleToggleShowAll}
           isMinimized={selectorMinimized}
-          onToggleMinimize={() => setSelectorMinimized(!selectorMinimized)}
+          onToggleMinimize={handleToggleSelector}
         />
       </motion.div>
 
@@ -229,7 +249,7 @@ export function ISSTracker() {
           lastUpdate={lastUpdate}
           onShowAstronauts={() => setShowAstronautPanel(true)}
           isMinimized={infoMinimized}
-          onToggleMinimize={() => setInfoMinimized(!infoMinimized)}
+          onToggleMinimize={handleToggleInfo}
         />
       </motion.div>
 

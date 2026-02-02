@@ -1,4 +1,4 @@
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   Satellite,
   Globe2,
@@ -13,23 +13,25 @@ import {
 import { SatelliteData, Astronaut, COUNTRY_FLAGS } from './types';
 import { SATELLITE_CATALOG } from '../../config/satellite-config';
 
-// Flag component
+// Premium Flag component
 function CountryFlag({ countryCode }: { countryCode: string }) {
   const flagUrl = COUNTRY_FLAGS[countryCode];
 
   if (!flagUrl) {
-    return <span className="text-sm">🌍</span>;
+    return <span className="text-sm grayscale opacity-70">🌍</span>;
   }
 
   return (
-    <img
-      src={flagUrl}
-      alt={countryCode}
-      className="w-5 h-4 object-cover rounded-sm shadow-sm"
-      onError={(e) => {
-        e.currentTarget.style.display = 'none';
-      }}
-    />
+    <div className="w-5 h-3.5 relative overflow-hidden rounded-[2px] shadow-sm ring-1 ring-white/10">
+      <img
+        src={flagUrl}
+        alt={countryCode}
+        className="w-full h-full object-cover"
+        onError={(e) => {
+          e.currentTarget.style.display = 'none';
+        }}
+      />
+    </div>
   );
 }
 
@@ -57,20 +59,20 @@ export function InfoPanel({
   if (isMinimized) {
     return (
       <motion.div
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        className="glass-panel rounded-xl p-2 shadow-2xl"
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="glass-panel rounded-full p-1.5 shadow-2xl border border-white/10"
       >
         <button
           onClick={onToggleMinimize}
-          className="flex items-center gap-2 p-2 hover:bg-primary/20 rounded-lg transition-colors"
-          title="Expand Info Panel"
+          className="flex items-center gap-2 px-3 py-1.5 hover:bg-white/5 rounded-full transition-all duration-300 group"
+          title="Expand Stats"
         >
-          <Satellite className="w-4 h-4 text-primary" />
-          <span className="text-xs font-medium text-foreground">
-            {satellite?.shortName || 'ISS'}
+          <Activity className="w-4 h-4 text-primary" />
+          <span className="text-xs font-medium text-foreground/90 group-hover:text-primary transition-colors">
+            Telemetry
           </span>
-          <Maximize2 className="w-3 h-3 text-muted-foreground" />
+          <Maximize2 className="w-3.5 h-3.5 text-muted-foreground group-hover:text-primary transition-colors" />
         </button>
       </motion.div>
     );
@@ -78,156 +80,143 @@ export function InfoPanel({
 
   return (
     <motion.div
-      initial={{ x: -100, opacity: 0 }}
-      animate={{ x: 0, opacity: 1 }}
+      initial={{ x: -20, opacity: 0, filter: 'blur(10px)' }}
+      animate={{ x: 0, opacity: 1, filter: 'blur(0px)' }}
       transition={{ duration: 0.5, ease: 'easeOut' }}
-      className="glass-panel rounded-xl p-4 w-64 shadow-2xl"
+      className="glass-panel rounded-2xl p-0 w-72 shadow-2xl border border-white/10 ring-1 ring-black/20 overflow-hidden"
     >
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between p-3 border-b border-white/5 bg-gradient-to-b from-white/5 to-transparent">
+        <div className="flex items-center gap-2.5">
           <div
-            className="p-2 rounded-lg glow-border"
-            style={{
-              backgroundColor: `${catalogEntry?.color || '#00d4ff'}20`,
-              borderColor: `${catalogEntry?.color || '#00d4ff'}40`
-            }}
+            className="p-1.5 rounded-lg bg-primary/10 ring-1 ring-primary/20"
           >
-            <Satellite
-              className="w-5 h-5"
-              style={{ color: catalogEntry?.color || '#00d4ff' }}
-            />
+            <Activity className="w-3.5 h-3.5 text-primary" />
           </div>
           <div>
-            <h2 className="text-sm font-bold text-foreground">
-              {satellite?.shortName || 'Loading...'}
-            </h2>
+            <h2 className="text-xs font-bold text-foreground">Live Telemetry</h2>
             <div className="flex items-center gap-1.5">
-              <span
-                className="w-1.5 h-1.5 rounded-full animate-pulse"
-                style={{ backgroundColor: catalogEntry?.color || '#00d4ff' }}
-              />
-              <span className="text-[10px] text-muted-foreground">Live Tracking</span>
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500"></span>
+              </span>
+              <span className="text-[9px] text-muted-foreground font-mono uppercase tracking-wider">Receiving Data</span>
             </div>
           </div>
         </div>
         <button
           onClick={onToggleMinimize}
-          className="p-1.5 rounded-lg hover:bg-secondary transition-colors"
+          className="p-1.5 rounded-lg hover:bg-white/5 text-muted-foreground hover:text-foreground transition-all"
           title="Minimize"
         >
-          <Minimize2 className="w-4 h-4 text-muted-foreground" />
+          <Minimize2 className="w-3.5 h-3.5" />
         </button>
       </div>
 
       {/* Data Grid */}
-      <div className="space-y-3">
-        {/* Position */}
-        <DataSection icon={<MapPin className="w-3.5 h-3.5" />} title="Position">
+      <div className="p-3 space-y-2.5">
+        {/* Position Group */}
+        <div className="bg-black/20 rounded-xl p-2.5 border border-white/5">
+          <div className="flex items-center gap-1.5 mb-2">
+            <MapPin className="w-3 h-3 text-primary/70" />
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Geospatial</span>
+          </div>
           <div className="grid grid-cols-2 gap-2">
             <DataItem
-              label="Lat"
+              label="Latitude"
               value={satellite?.position ? `${satellite.position.latitude.toFixed(4)}°` : '--'}
             />
             <DataItem
-              label="Lng"
+              label="Longitude"
               value={satellite?.position ? `${satellite.position.longitude.toFixed(4)}°` : '--'}
             />
           </div>
-        </DataSection>
+        </div>
 
-        {/* Orbital Data */}
-        <DataSection icon={<Globe2 className="w-3.5 h-3.5" />} title="Orbital Data">
+        {/* Orbital Group */}
+        <div className="bg-black/20 rounded-xl p-2.5 border border-white/5">
+          <div className="flex items-center gap-1.5 mb-2">
+            <Globe2 className="w-3 h-3 text-primary/70" />
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Orbital Params</span>
+          </div>
           <div className="grid grid-cols-2 gap-2">
             <DataItem
               label="Altitude"
-              value={satellite ? `${satellite.altitude} km` : '--'}
+              value={satellite ? `${satellite.altitude.toFixed(1)} km` : '--'}
+              subValue={satellite ? `~${(satellite.altitude * 0.621371).toFixed(1)} mi` : undefined}
             />
             <DataItem
               label="Velocity"
-              value={satellite ? `${(satellite.velocity / 1000).toFixed(1)}k km/h` : '--'}
+              value={satellite ? `${(satellite.velocity / 1000).toFixed(1)}k` : '--'}
+              unit="km/h"
+              subValue={satellite ? `${(satellite.velocity / 3600).toFixed(2)} km/s` : undefined}
             />
           </div>
-        </DataSection>
+        </div>
 
-        {/* Crew (only for space stations) */}
+        {/* Crew (Conditional) */}
         {satellite?.type === 'space-station' && satellite.id === 'iss' && (
-          <DataSection icon={<Users className="w-3.5 h-3.5" />} title="Crew Aboard">
-            <div className="flex items-center justify-between">
-              <span className="data-value text-xl">{astronautCount}</span>
-              <span className="text-[10px] text-muted-foreground">astronauts</span>
-            </div>
-            {astronauts.length > 0 && onShowAstronauts && (
-              <button
-                onClick={onShowAstronauts}
-                className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors mt-1"
-              >
-                <span>View crew</span>
-                <ChevronRight className="w-3 h-3" />
-              </button>
-            )}
-          </DataSection>
-        )}
+          <div className="bg-primary/5 rounded-xl p-2.5 border border-primary/10 relative overflow-hidden group">
+            <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="flex items-center justify-between relative z-10">
+              <div className="flex items-center gap-2">
+                <Users className="w-3.5 h-3.5 text-primary" />
+                <div>
+                  <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Crew Onboard</div>
+                  <div className="text-sm font-bold text-foreground flex items-baseline gap-1">
+                    {astronautCount} <span className="text-[10px] text-muted-foreground font-normal">Astronauts</span>
+                  </div>
+                </div>
+              </div>
 
-        {/* Satellite Info */}
-        {catalogEntry && (
-          <DataSection icon={<Activity className="w-3.5 h-3.5" />} title="Info">
-            <p className="text-[10px] text-muted-foreground leading-relaxed">
-              {catalogEntry.description}
-            </p>
-            <div className="flex items-center gap-2 mt-2">
-              <CountryFlag countryCode={catalogEntry.countryCode} />
-              <span className="text-xs text-foreground">{catalogEntry.country}</span>
+              {astronauts.length > 0 && onShowAstronauts && (
+                <button
+                  onClick={onShowAstronauts}
+                  className="p-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-all"
+                >
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
-          </DataSection>
-        )}
-
-        {/* Last Update */}
-        <DataSection icon={<Clock className="w-3.5 h-3.5" />} title="Last Update">
-          <div className="flex items-center gap-1.5">
-            <Activity className="w-2.5 h-2.5 text-green-500 animate-pulse" />
-            <span className="text-xs text-muted-foreground font-mono">
-              {lastUpdate
-                ? lastUpdate.toLocaleTimeString('en-US', {
-                  hour12: false,
-                  timeZoneName: 'short'
-                })
-                : 'Connecting...'}
-            </span>
           </div>
-        </DataSection>
+        )}
+
+        {/* Quick Info */}
+        {catalogEntry && (
+          <div className="bg-secondary/20 rounded-xl p-2.5 border border-white/5">
+            <div className="flex items- justify-between mb-1.5">
+              <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Registration</div>
+              <CountryFlag countryCode={catalogEntry.countryCode} />
+            </div>
+            <div className="text-[10px] text-muted-foreground leading-relaxed line-clamp-3">
+              {catalogEntry.description}
+            </div>
+          </div>
+        )}
+
+        {/* Footer / Last Update */}
+        <div className="pt-1 flex items-center justify-end gap-1.5 border-t border-white/5">
+          <span className="text-[9px] text-muted-foreground">Last Update:</span>
+          <span className="text-[9px] font-mono text-primary/80">
+            {lastUpdate
+              ? lastUpdate.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })
+              : 'Syncing...'}
+          </span>
+        </div>
       </div>
     </motion.div>
   );
 }
 
-function DataSection({
-  icon,
-  title,
-  children
-}: {
-  icon: React.ReactNode;
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="bg-secondary/30 rounded-lg p-2.5 border border-border/30">
-      <div className="flex items-center gap-1.5 mb-1.5">
-        <span className="text-primary">{icon}</span>
-        <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
-          {title}
-        </span>
-      </div>
-      {children}
-    </div>
-  );
-}
-
-function DataItem({ label, value }: { label: string; value: string }) {
+function DataItem({ label, value, unit, subValue }: { label: string; value: string; unit?: string; subValue?: string }) {
   return (
     <div>
-      <div className="text-[10px] text-muted-foreground mb-0.5">{label}</div>
-      <div className="data-value text-sm">{value}</div>
+      <div className="text-[9px] text-muted-foreground mb-0.5 uppercase tracking-wide opacity-70">{label}</div>
+      <div className="font-mono text-sm text-foreground font-medium flex items-baseline gap-0.5">
+        {value}
+        {unit && <span className="text-[10px] text-muted-foreground">{unit}</span>}
+      </div>
+      {subValue && <div className="text-[9px] text-muted-foreground/60 font-mono mt-0.5">{subValue}</div>}
     </div>
   );
 }
