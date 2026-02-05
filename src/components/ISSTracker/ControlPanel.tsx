@@ -48,11 +48,11 @@ export function ControlPanel({
       initial={{ y: 100, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.5, ease: 'easeOut', delay: 0.2 }}
-      className="glass-panel rounded-full px-4 py-2 sm:px-5 sm:py-2.5 shadow-2xl border border-white/10 ring-1 ring-black/20"
+      className="glass-panel rounded-2xl sm:rounded-full px-2 py-2 sm:px-5 sm:py-2.5 shadow-2xl border border-white/10 ring-1 ring-black/20 max-w-[calc(100vw-1rem)] sm:max-w-none mx-2 sm:mx-0"
     >
-      <div className="flex flex-wrap items-center gap-2 justify-center">
+      <div className="flex flex-nowrap sm:flex-wrap items-center gap-2 justify-start sm:justify-center overflow-x-auto sm:overflow-visible no-scrollbar mask-fade-sides">
         {/* View Mode Controls */}
-        <div className="flex items-center gap-1 bg-black/20 rounded-full p-1 border border-white/5">
+        <div className="flex items-center gap-1 bg-black/20 rounded-full p-1 border border-white/5 flex-shrink-0">
           <ControlButton
             active={state.viewMode === 'flat'}
             onClick={() => onChangeViewMode('flat')}
@@ -74,7 +74,7 @@ export function ControlPanel({
         <Divider />
 
         {/* Tracking Controls */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 flex-shrink-0">
           <ControlButton
             active={state.isTracking}
             onClick={onToggleTracking}
@@ -103,7 +103,7 @@ export function ControlPanel({
         <Divider />
 
         {/* Display Controls */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 flex-shrink-0">
           <ControlButton
             active={state.showOrbit}
             onClick={onToggleOrbit}
@@ -135,7 +135,7 @@ export function ControlPanel({
         {/* Map Style Controls (only for flat view) */}
         {state.viewMode === 'flat' && (
           <>
-            <div className="flex items-center gap-1 bg-black/20 rounded-full p-1 border border-white/5">
+            <div className="flex items-center gap-1 bg-black/20 rounded-full p-1 border border-white/5 flex-shrink-0">
               <ControlButton
                 active={state.mapStyle === 'satellite'}
                 onClick={() => onChangeMapStyle('satellite')}

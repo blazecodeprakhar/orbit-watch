@@ -67,7 +67,8 @@ export function ISSTracker() {
 
   // Panel minimize states
   const [infoMinimized, setInfoMinimized] = useState(true);
-  const [selectorMinimized, setSelectorMinimized] = useState(false);
+  const [selectorMinimized, setSelectorMinimized] = useState(() => window.innerWidth < 768);
+
   const [passMinimized, setPassMinimized] = useState(false);
 
   const {
@@ -145,10 +146,17 @@ export function ISSTracker() {
 
   const handleCenterSatellite = useCallback(() => {
     if (mapRef.current && activeSatellite?.position) {
-      mapRef.current.flyTo([activeSatellite.position.latitude, activeSatellite.position.longitude], 4, {
-        duration: 1.5,
-        easeLinearity: 0.25,
-      });
+      const currentZoom = mapRef.current.getZoom();
+      const targetZoom = Math.max(currentZoom, 4);
+
+      mapRef.current.setView(
+        [activeSatellite.position.latitude, activeSatellite.position.longitude],
+        targetZoom,
+        {
+          animate: true,
+          duration: 1.5
+        }
+      );
     }
   }, [activeSatellite]);
 
@@ -302,6 +310,22 @@ export function ISSTracker() {
         isMinimized={passMinimized}
         onToggleMinimize={() => setPassMinimized(!passMinimized)}
       />
+      {/* Developer Watermark */}
+      <motion.a
+        href="https://blazecodeprakhar.netlify.app/"
+        target="_blank"
+        rel="noopener noreferrer"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 1 }}
+        className="absolute bottom-20 right-4 sm:bottom-4 sm:right-4 z-[1000] glass-panel px-3 py-1.5 rounded-full flex items-center gap-2 hover:bg-primary/20 transition-all duration-300 group text-decoration-none border border-white/10 hover:border-primary/40 hover:scale-105"
+      >
+        <span className="w-2 h-2 rounded-full bg-primary animate-pulse shadow-[0_0_8px_hsl(var(--primary))]" />
+        <span className="text-xs font-semibold text-muted-foreground group-hover:text-primary transition-colors tracking-wide">
+          blazecodeprakhar
+        </span>
+      </motion.a>
+
     </div>
   );
 }

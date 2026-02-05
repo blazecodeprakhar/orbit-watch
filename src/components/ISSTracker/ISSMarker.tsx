@@ -141,9 +141,10 @@ export function ISSMarker({
 
   useEffect(() => {
     if (followISS && isActive) {
-      map.flyTo([position.latitude, position.longitude], map.getZoom(), {
-        duration: 1,
-        easeLinearity: 0.25,
+      map.setView([position.latitude, position.longitude], map.getZoom(), {
+        animate: true,
+        duration: 1, // Smooth transaction
+        easeLinearity: 0.25
       });
     }
   }, [followISS, isActive, position.latitude, position.longitude, map]);
