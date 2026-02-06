@@ -265,7 +265,7 @@ export function ISSTracker() {
 
       {/* Control Panel */}
       <div
-        className="absolute bottom-4 left-1/2 -translate-x-1/2"
+        className="absolute bottom-10 sm:bottom-4 left-1/2 -translate-x-1/2 w-full max-w-[calc(100%-2rem)] sm:w-auto sm:max-w-none flex justify-center"
         style={{ zIndex: 1000 }}
       >
         <ControlPanel
@@ -318,7 +318,7 @@ export function ISSTracker() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 1 }}
-        className="absolute bottom-20 right-4 sm:bottom-4 sm:right-4 z-[1000] glass-panel px-3 py-1.5 rounded-full flex items-center gap-2 hover:bg-primary/20 transition-all duration-300 group text-decoration-none border border-white/10 hover:border-primary/40 hover:scale-105"
+        className="absolute bottom-28 right-4 sm:bottom-4 sm:right-4 z-[1000] glass-panel px-3 py-1.5 rounded-full flex items-center gap-2 hover:bg-primary/20 transition-all duration-300 group text-decoration-none border border-white/10 hover:border-primary/40 hover:scale-105"
       >
         <span className="w-2 h-2 rounded-full bg-primary animate-pulse shadow-[0_0_8px_hsl(var(--primary))]" />
         <span className="text-xs font-semibold text-muted-foreground group-hover:text-primary transition-colors tracking-wide">
